@@ -9,6 +9,7 @@ The project has a local Git history with incremental commits. To publish it as a
 git remote add origin https://github.com/YOUR_USERNAME/Assignment6_SmartCodeInspection.git
 git branch -M main
 git push -u origin main
+git push origin v1.0
 ```
 
 Replace `YOUR_USERNAME` with your GitHub username. The Git history, including the separate `TechnicalDebtVisitor` feature commit, will be pushed with the branch.

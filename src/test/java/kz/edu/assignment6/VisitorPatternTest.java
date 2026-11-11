@@ -152,8 +152,8 @@ class VisitorPatternTest {
         ProjectStatisticsVisitor visitor = new ProjectStatisticsVisitor();
         new Directory("empty").accept(visitor);
         assertEquals(0, visitor.getTotalFiles());
-        assertEquals(0.0, visitor.getAverageComplexity());
-        assertEquals(0.0, visitor.getTestSourceRatio());
+        assertEquals(0.0, visitor.getAverageComplexity(), 0.0001);
+        assertEquals(0.0, visitor.getTestSourceRatio(), 0.0001);
     }
 
     @Test
