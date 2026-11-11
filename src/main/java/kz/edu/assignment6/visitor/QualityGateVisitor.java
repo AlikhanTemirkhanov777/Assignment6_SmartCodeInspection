@@ -9,7 +9,7 @@ public final class QualityGateVisitor implements ProjectVisitor {
     private final double maxAverageComplexity;
     private final double minTestSourceRatio;
     private int sourceFiles;
-    private int testFiles;
+    private int totalTests;
     private long complexityTotal;
     private int criticalSecurityIssues;
 
@@ -24,7 +24,7 @@ public final class QualityGateVisitor implements ProjectVisitor {
         sourceFiles++; complexityTotal += file.getComplexity();
         if (file.hasHardcodedCredentials()) criticalSecurityIssues++;
     }
-    @Override public void visit(TestFile file) { testFiles++; }
+    @Override public void visit(TestFile file) { totalTests += file.getTestsCount(); }
     @Override public void visit(ConfigurationFile file) {
         if (file.hasExposedCredentials() || (file.isProduction() && !file.isSecure())) criticalSecurityIssues++;
     }
@@ -34,7 +34,7 @@ public final class QualityGateVisitor implements ProjectVisitor {
     @Override public void visit(Directory directory) { directory.getChildren().forEach(child -> child.accept(this)); }
 
     public double getAverageComplexity() { return sourceFiles == 0 ? 0.0 : (double) complexityTotal / sourceFiles; }
-    public double getTestSourceRatio() { return sourceFiles == 0 ? 0.0 : (double) testFiles / sourceFiles; }
+    public double getTestSourceRatio() { return sourceFiles == 0 ? 0.0 : (double) totalTests / sourceFiles; }
     public int getCriticalSecurityIssues() { return criticalSecurityIssues; }
     public Map<String, Boolean> getChecks() {
         Map<String, Boolean> checks = new LinkedHashMap<>();

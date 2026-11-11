@@ -24,6 +24,14 @@ class VisitorPatternTest {
         RecordingVisitor visitor = new RecordingVisitor();
         new SourceCodeFile("A.java", 10, 2, false, false, true).accept(visitor);
         assertEquals("source:A.java", visitor.visited);
+        new TestFile("ATest.java", 5, 1, 1, "A.java").accept(visitor);
+        assertEquals("test", visitor.visited);
+        new ConfigurationFile("app.properties", true, true, false, 2).accept(visitor);
+        assertEquals("config", visitor.visited);
+        new DependencyFile("pom.xml", List.of()).accept(visitor);
+        assertEquals("dependency", visitor.visited);
+        new Directory("nested").accept(visitor);
+        assertEquals("directory", visitor.visited);
     }
 
     @Test
@@ -67,6 +75,7 @@ class VisitorPatternTest {
         assertEquals(5, visitor.getTotalFiles());
         assertEquals(2, visitor.getSourceFiles());
         assertEquals(1, visitor.getTestFiles());
+        assertEquals(12, visitor.getTotalTests());
         assertEquals(2, visitor.getDependencies());
         assertEquals(405, visitor.getLinesOfCode());
     }
@@ -80,7 +89,32 @@ class VisitorPatternTest {
         ProjectStatisticsVisitor visitor = new ProjectStatisticsVisitor();
         root.accept(visitor);
         assertEquals(6.0, visitor.getAverageComplexity(), 0.001);
-        assertEquals(0.5, visitor.getTestSourceRatio(), 0.001);
+        assertEquals(1.0, visitor.getTestSourceRatio(), 0.001);
+    }
+
+    @Test
+    void statisticsUsesIndividualTestCountForTestSourceRatio() {
+        Directory root = new Directory("root")
+                .add(new SourceCodeFile("A.java", 20, 4, false, false, true))
+                .add(new TestFile("ATest.java", 15, 7, 7, "A.java"));
+        ProjectStatisticsVisitor visitor = new ProjectStatisticsVisitor();
+        root.accept(visitor);
+
+        assertEquals(7, visitor.getTotalTests());
+        assertEquals(7.0, visitor.getTestSourceRatio(), 0.001);
+        assertTrue(visitor.report().contains("Total tests: 7"));
+    }
+
+    @Test
+    void qualityGateUsesIndividualTestCountRatherThanTestFileCount() {
+        Directory root = new Directory("root")
+                .add(new SourceCodeFile("A.java", 20, 4, false, false, true))
+                .add(new TestFile("ATest.java", 15, 1, 1, "A.java"));
+        QualityGateVisitor visitor = new QualityGateVisitor(10.0, 0.40);
+        root.accept(visitor);
+
+        assertTrue(visitor.isReadyForRelease());
+        assertEquals(1.0, visitor.getTestSourceRatio(), 0.001);
     }
 
     @Test

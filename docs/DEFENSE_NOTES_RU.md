@@ -24,3 +24,7 @@
 
 ## Как запустить?
 `mvn clean test`, затем запустить `kz.edu.assignment6.demo.DemoApplication` из IDE.
+
+
+## Важное уточнение по статистике
+`ProjectStatisticsVisitor` считает именно количество отдельных тест-кейсов через `TestFile.getTestsCount()`, а не число файлов с тестами. Test/source ratio рассчитывается как `totalTests / sourceFiles`. `QualityGateVisitor` использует ту же формулу, чтобы статистика и решение о выпуске не противоречили друг другу.

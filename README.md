@@ -23,7 +23,7 @@ fintech-project/
 └── pom.xml
 ```
 
-The demo data is intentionally mixed: the security audit finds no critical issues and the quality gate passes, while compliance reports that `UserService.java` has no mapped production test.
+The statistics visitor counts individual test cases from `TestFile.testsCount` (not merely the number of test files), and the Quality Gate uses the same test/source ratio. The demo data is intentionally mixed: the security audit finds no critical issues and the quality gate passes, while compliance reports that `UserService.java` has no mapped production test.
 
 ## 2. Architecture
 
@@ -39,7 +39,7 @@ The demo data is intentionally mixed: the security audit finds no critical issue
 ### Visitors
 
 - `SecurityAuditVisitor` — security findings, severity, score and report.
-- `ProjectStatisticsVisitor` — file counts, LOC, tests, dependencies, average complexity and test/source ratio.
+- `ProjectStatisticsVisitor` — file counts, LOC, individual test-case count, dependencies, average complexity and test/source ratio (individual tests / production source files).
 - `QualityGateVisitor` — release decision based on complexity, tests and critical security issues.
 - `ComplianceVisitor` — pinned versions, exposed credentials, prohibited dependencies and tests for production source files.
 - `TechnicalDebtVisitor` — an additional visitor that estimates technical-debt points. It was added in its own Git commit and does not require changing element classes.
@@ -85,7 +85,7 @@ The application can also be run from an IDE by starting `kz.edu.assignment6.demo
 
 ## 7. Tests
 
-The JUnit suite contains 17 meaningful tests covering concrete dispatch, security findings, statistics, quality-gate PASS/FAIL, compliance violations, nested and empty directories, the additional visitor, invalid metrics and the demo project. Tests verify values and behavior, not only object creation.
+The JUnit suite contains 19 meaningful tests covering concrete dispatch, security findings, statistics, quality-gate PASS/FAIL, compliance violations, nested and empty directories, the additional visitor, invalid metrics and the demo project. Tests verify values and behavior, not only object creation.
 
 ## 8. UML
 
