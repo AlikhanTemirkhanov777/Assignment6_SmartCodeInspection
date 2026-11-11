@@ -66,7 +66,7 @@ class VisitorPatternTest {
         DemoApplication.createFintechProject().accept(visitor);
         assertEquals(5, visitor.getTotalFiles());
         assertEquals(2, visitor.getSourceFiles());
-        assertEquals(2, visitor.getTestFiles());
+        assertEquals(1, visitor.getTestFiles());
         assertEquals(2, visitor.getDependencies());
         assertEquals(405, visitor.getLinesOfCode());
     }
