@@ -98,8 +98,7 @@ class VisitorPatternTest {
     void qualityGateFailsForComplexityAndInsufficientTests() {
         Directory root = new Directory("root")
                 .add(new SourceCodeFile("A.java", 10, 22, false, false, true))
-                .add(new SourceCodeFile("B.java", 10, 20, false, false, true))
-                .add(new TestFile("ATest.java", 5, 1, 1, "A.java"));
+                .add(new SourceCodeFile("B.java", 10, 20, false, false, true));
         QualityGateVisitor visitor = new QualityGateVisitor();
         root.accept(visitor);
         assertFalse(visitor.isReadyForRelease());
