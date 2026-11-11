@@ -85,7 +85,7 @@ The application can also be run from an IDE by starting `kz.edu.assignment6.demo
 
 ## 7. Tests
 
-The JUnit suite contains 16 meaningful tests covering concrete dispatch, security findings, statistics, quality-gate PASS/FAIL, compliance violations, nested and empty directories, the additional visitor, invalid metrics and the demo project. Tests verify values and behavior, not only object creation.
+The JUnit suite contains 17 meaningful tests covering concrete dispatch, security findings, statistics, quality-gate PASS/FAIL, compliance violations, nested and empty directories, the additional visitor, invalid metrics and the demo project. Tests verify values and behavior, not only object creation.
 
 ## 8. UML
 

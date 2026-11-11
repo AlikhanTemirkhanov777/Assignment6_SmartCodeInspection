@@ -158,6 +158,18 @@ class VisitorPatternTest {
     }
 
     @Test
+    void technicalDebtVisitorProducesHigherDebtForComplexCode() {
+        Directory low = new Directory("low").add(new SourceCodeFile("Simple.java", 100, 3, false, false, false));
+        Directory high = new Directory("high").add(new SourceCodeFile("Complex.java", 100, 18, false, true, false));
+        TechnicalDebtVisitor lowVisitor = new TechnicalDebtVisitor();
+        TechnicalDebtVisitor highVisitor = new TechnicalDebtVisitor();
+        low.accept(lowVisitor);
+        high.accept(highVisitor);
+        assertTrue(highVisitor.getDebtPoints() > lowVisitor.getDebtPoints());
+        assertEquals(1, highVisitor.getHighDebtFiles());
+    }
+
+    @Test
     void configurationAndDependencyEdgeCasesAreHandled() {
         assertThrows(IllegalArgumentException.class, () -> new SourceCodeFile("A.java", -1, 1, false, false, false));
         assertThrows(IllegalArgumentException.class, () -> new TestFile("ATest.java", 10, 2, 3, "A.java"));
