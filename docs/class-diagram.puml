@@ -1,0 +1,38 @@
+@startuml
+skinparam classAttributeIconSize 0
+interface ProjectElement {
+  +accept(visitor: ProjectVisitor): void
+}
+interface ProjectVisitor {
+  +visit(file: SourceCodeFile): void
+  +visit(file: TestFile): void
+  +visit(file: ConfigurationFile): void
+  +visit(file: DependencyFile): void
+  +visit(directory: Directory): void
+}
+class SourceCodeFile
+class TestFile
+class ConfigurationFile
+class DependencyFile
+class Directory {
+  -children: List<ProjectElement>
+  +add(element: ProjectElement): Directory
+}
+class SecurityAuditVisitor
+class ProjectStatisticsVisitor
+class QualityGateVisitor
+class ComplianceVisitor
+class TechnicalDebtVisitor
+ProjectElement <|.. SourceCodeFile
+ProjectElement <|.. TestFile
+ProjectElement <|.. ConfigurationFile
+ProjectElement <|.. DependencyFile
+ProjectElement <|.. Directory
+Directory o-- "0..*" ProjectElement : children
+ProjectVisitor <|.. SecurityAuditVisitor
+ProjectVisitor <|.. ProjectStatisticsVisitor
+ProjectVisitor <|.. QualityGateVisitor
+ProjectVisitor <|.. ComplianceVisitor
+ProjectVisitor <|.. TechnicalDebtVisitor
+ProjectElement ..> ProjectVisitor : accept / visit
+@enduml

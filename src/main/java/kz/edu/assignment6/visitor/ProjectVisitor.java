@@ -1,4 +1,6 @@
-package kz.edu.assignment6.model;
+package kz.edu.assignment6.visitor;
+
+import kz.edu.assignment6.model.*;
 
 /** Operations are kept separate from the project element hierarchy. */
 public interface ProjectVisitor {

@@ -1,0 +1,9 @@
+@startuml
+actor Client
+participant SourceCodeFile
+participant SecurityAuditVisitor
+Client -> SourceCodeFile: accept(visitor)
+SourceCodeFile -> SecurityAuditVisitor: visit(this)
+SecurityAuditVisitor -> SecurityAuditVisitor: check credential and risk flags
+SecurityAuditVisitor --> Client: findings available in report()
+@enduml

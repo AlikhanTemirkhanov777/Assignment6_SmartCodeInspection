@@ -3,6 +3,7 @@ package kz.edu.assignment6.visitor;
 import kz.edu.assignment6.model.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Collections;
 
 public final class QualityGateVisitor implements ProjectVisitor {
     private final double maxAverageComplexity;
@@ -40,7 +41,7 @@ public final class QualityGateVisitor implements ProjectVisitor {
         checks.put("Security", criticalSecurityIssues == 0);
         checks.put("Complexity", getAverageComplexity() <= maxAverageComplexity);
         checks.put("Tests", getTestSourceRatio() >= minTestSourceRatio);
-        return Map.copyOf(checks);
+        return Collections.unmodifiableMap(checks);
     }
     public boolean isReadyForRelease() { return getChecks().values().stream().allMatch(Boolean::booleanValue); }
     public String report() {
