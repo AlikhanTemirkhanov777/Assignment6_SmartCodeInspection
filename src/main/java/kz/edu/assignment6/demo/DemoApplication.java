@@ -47,5 +47,8 @@ public final class DemoApplication {
         project.accept(compliance);
         System.out.println(compliance.report() + "\n");
 
+        TechnicalDebtVisitor technicalDebt = new TechnicalDebtVisitor();
+        project.accept(technicalDebt);
+        System.out.println(technicalDebt.report());
     }
 }
