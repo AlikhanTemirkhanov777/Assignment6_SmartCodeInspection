@@ -2,8 +2,15 @@
 actor Client
 participant SourceCodeFile
 participant SecurityAuditVisitor
-Client -> SourceCodeFile: accept(visitor)
+Client -> SourceCodeFile: accept(securityVisitor)
+activate SourceCodeFile
 SourceCodeFile -> SecurityAuditVisitor: visit(this)
-SecurityAuditVisitor -> SecurityAuditVisitor: check credential and risk flags
-SecurityAuditVisitor --> Client: findings available in report()
+activate SecurityAuditVisitor
+SecurityAuditVisitor -> SecurityAuditVisitor: inspect risk and credentials
+SecurityAuditVisitor --> SourceCodeFile: return
+ deactivate SecurityAuditVisitor
+SourceCodeFile --> Client: return
+ deactivate SourceCodeFile
+Client -> SecurityAuditVisitor: report()
+SecurityAuditVisitor --> Client: formatted findings
 @enduml

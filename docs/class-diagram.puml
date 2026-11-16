@@ -1,5 +1,6 @@
 @startuml
 skinparam classAttributeIconSize 0
+left to right direction
 interface ProjectElement {
   +accept(visitor: ProjectVisitor): void
 }
@@ -17,6 +18,7 @@ class DependencyFile
 class Directory {
   -children: List<ProjectElement>
   +add(element: ProjectElement): Directory
+  +accept(visitor: ProjectVisitor): void
 }
 class SecurityAuditVisitor
 class ProjectStatisticsVisitor

@@ -1,30 +1,31 @@
-# Краткая подготовка к защите (простыми словами)
+# Assignment 6 — краткие ответы для защиты
 
-## Что делает проект?
-Он анализирует структуру программного проекта. Есть разные типы элементов: Java-файлы, тесты, конфигурация, зависимости и папки. Одну и ту же структуру проверяют разные операции.
+**Что делает программа?** Анализирует проект fintech-project: безопасность, статистику, готовность к релизу, соответствие правилам и технический долг.
 
-## Почему здесь Visitor?
-Чтобы не добавлять методы `checkSecurity()`, `calculateStatistics()` и другие в каждый класс файла. Данные остаются в элементах, а действия находятся в отдельных Visitor-классах.
+**Почему Visitor?** Есть пять типов элементов, но несколько независимых проверок. Вместо `checkSecurity()` и `checkCompliance()` в каждом классе я вынес проверки в отдельных Visitors.
 
-## Как работает accept / visit?
-Например, клиент вызывает `sourceFile.accept(securityVisitor)`. Внутри `SourceCodeFile` выполняется `visitor.visit(this)`. Java выбирает метод `visit(SourceCodeFile)`. Это и есть double dispatch: выбор зависит и от типа элемента, и от типа посетителя.
+**Где Element?** `model/ProjectElement.java` и классы `SourceCodeFile`, `TestFile`, `ConfigurationFile`, `DependencyFile`, `Directory`.
 
-## Что делает каждый Visitor?
-- `SecurityAuditVisitor` ищет пароли в коде, уязвимые библиотеки, небезопасную конфигурацию и рискованный код.
-- `ProjectStatisticsVisitor` считает файлы, строки, тесты, зависимости, среднюю сложность и отношение тестов к исходникам.
-- `QualityGateVisitor` решает, можно ли выпускать проект: сложность не выше 10, отношение тестов не ниже 0.40, критических проблем безопасности нет.
-- `ComplianceVisitor` проверяет правила проекта: секреты не должны быть открыты, версии библиотек должны быть зафиксированы, запрещённых библиотек быть не должно, у production-кода должны быть тесты.
-- `TechnicalDebtVisitor` отдельно оценивает условный технический долг в баллах.
+**Где Visitor?** `visitor/ProjectVisitor.java` с пятью перегруженными `visit()` и пять реализаций.
 
-## Почему папки обрабатываются рекурсивно?
-В `visit(Directory)` посетитель проходит по дочерним элементам и вызывает у каждого `accept(this)`. Поэтому вложенные папки тоже анализируются тем же Visitor.
+**Double dispatch:** `projectElement.accept(visitor)` вызывает `visitor.visit(this)`. Java выбирает обработчик по конкретному типу элемента и конкретному объекту visitor.
 
-## Что такое ограничение Visitor?
-Если добавить новый тип элемента `DatabaseMigrationFile`, придётся добавить `visit(DatabaseMigrationFile)` в `ProjectVisitor` и реализовать этот метод во всех посетителях. Но если добавляется новая операция, достаточно создать новый Visitor — классы элементов не меняются.
+**Почему Directory?** Позволяет делать дерево проекта. Каждый Visitor рекурсивно обходит детей: `child.accept(this)`.
 
-## Как запустить?
-`mvn clean test`, затем запустить `kz.edu.assignment6.demo.DemoApplication` из IDE.
+**Дополнительный visitor?** `TechnicalDebtVisitor`: считает баллы за сложный код, уязвимые зависимости, ошибки тестов, плохую конфигурацию. Его добавили отдельным коммитом, не меняя Elements.
 
+**Что такое Quality Gate?** Проверяет безопасность, среднюю сложность <= 10 и отношение тестовых файлов к исходным >= 0.40. В нашей демонстрации `1/2=0.50`, поэтому Tests PASS.
 
-## Важное уточнение по статистике
-`ProjectStatisticsVisitor` считает именно количество отдельных тест-кейсов через `TestFile.getTestsCount()`, а не число файлов с тестами. Test/source ratio рассчитывается как `totalTests / sourceFiles`. `QualityGateVisitor` использует ту же формулу, чтобы статистика и решение о выпуске не противоречили друг другу.
+**Почему Compliance FAIL, хотя Quality Gate PASS?** Quality Gate проверяет количественные пороги, а Compliance требует покрыть каждый production-файл тестом. Для `src/UserService.java` теста нет.
+
+**Что если новый Visitor?** Написать класс `implements ProjectVisitor`, реализовать 5 методов `visit()`. Elements не менять.
+
+**Что если новый DatabaseMigrationFile?** Добавить новый Element, новый `visit(DatabaseMigrationFile)` в интерфейс и реализовать его в каждом Visitor; иначе ошибки компиляции.
+
+**Visitor vs Strategy:** Strategy меняет один алгоритм в контексте; Visitor делает разные операции над разными типами элементов через `accept/visit`.
+
+**SOLID:** SRP — модель отдельно, анализ отдельно. OCP — можно добавлять новых Visitors. DIP — используется интерфейс `ProjectVisitor`.
+
+**Live coding порядок:** Predict -> Explain -> Modify -> Run -> Test. Сначала скажи, какие классы меняются, потом делай изменения, затем запусти JUnit и Demo.
+
+**Команды (если Maven в PATH):** `mvn clean test` и `mvn -q exec:java -Dexec.mainClass=kz.edu.assignment6.demo.DemoApplication`.

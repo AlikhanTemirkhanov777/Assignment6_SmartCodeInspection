@@ -6,20 +6,19 @@ import kz.edu.assignment6.visitor.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class VisitorPatternTest {
     @Test
-    void sourceElementDispatchesToCorrectVisitMethod() {
+    void allFiveElementsDispatchToTheirMatchingVisitMethod() {
         class RecordingVisitor implements ProjectVisitor {
-            String visited = "";
-            public void visit(SourceCodeFile file) { visited = "source:" + file.getPath(); }
-            public void visit(TestFile file) { visited = "test"; }
-            public void visit(ConfigurationFile file) { visited = "config"; }
-            public void visit(DependencyFile file) { visited = "dependency"; }
-            public void visit(Directory directory) { visited = "directory"; }
+            String visited;
+            public void visit(SourceCodeFile f) { visited = "source:" + f.getPath(); }
+            public void visit(TestFile f) { visited = "test"; }
+            public void visit(ConfigurationFile f) { visited = "config"; }
+            public void visit(DependencyFile f) { visited = "dependency"; }
+            public void visit(Directory d) { visited = "directory"; }
         }
         RecordingVisitor visitor = new RecordingVisitor();
         new SourceCodeFile("A.java", 10, 2, false, false, true).accept(visitor);
@@ -35,117 +34,129 @@ class VisitorPatternTest {
     }
 
     @Test
-    void securityVisitorFindsHardcodedCredentialsAsCritical() {
-        Directory root = new Directory("root").add(new SourceCodeFile("Secret.java", 20, 3, true, false, true));
-        SecurityAuditVisitor visitor = new SecurityAuditVisitor();
-        root.accept(visitor);
-        assertEquals(1, visitor.getCriticalIssueCount());
-        assertEquals(75, visitor.getSecurityScore());
+    void securityDetectsHardcodedCredentials() {
+        SecurityAuditVisitor v = new SecurityAuditVisitor();
+        new SourceCodeFile("Secret.java", 20, 3, true, false, true).accept(v);
+        assertEquals(1L, v.getCriticalIssueCount());
+        assertEquals(75, v.getSecurityScore());
+        assertTrue(v.report().contains("Hardcoded credentials"));
     }
 
     @Test
-    void securityVisitorFindsVulnerableDependency() {
-        Directory root = new Directory("root").add(new DependencyFile("pom.xml",
-                List.of(new Dependency("old-lib", "1.0", true, false, "MIT"))));
-        SecurityAuditVisitor visitor = new SecurityAuditVisitor();
-        root.accept(visitor);
-        assertTrue(visitor.report().contains("vulnerable dependency"));
+    void securityDetectsVulnerableDependencies() {
+        SecurityAuditVisitor v = new SecurityAuditVisitor();
+        new DependencyFile("pom.xml", List.of(new Dependency("old-lib", "1.0", true, false, "MIT"))).accept(v);
+        assertEquals(1L, v.getCriticalIssueCount());
+        assertTrue(v.report().contains("Known vulnerable dependency"));
     }
 
     @Test
-    void securityVisitorFindsInsecureProductionConfiguration() {
-        Directory root = new Directory("root").add(new ConfigurationFile("prod.properties", true, false, false, 5));
-        SecurityAuditVisitor visitor = new SecurityAuditVisitor();
-        root.accept(visitor);
-        assertEquals(1, visitor.getCriticalIssueCount());
+    void securityDetectsInsecureProductionConfiguration() {
+        SecurityAuditVisitor v = new SecurityAuditVisitor();
+        new ConfigurationFile("prod.properties", true, false, false, 5).accept(v);
+        assertEquals(1L, v.getCriticalIssueCount());
     }
 
     @Test
-    void safeProjectHasFullSecurityScore() {
-        SecurityAuditVisitor visitor = new SecurityAuditVisitor();
-        new Directory("empty").accept(visitor);
-        assertEquals(100, visitor.getSecurityScore());
-        assertTrue(visitor.getFindings().isEmpty());
+    void securityAndQualityCountTwoIndependentConfigIssues() {
+        Directory d = new Directory("app").add(new ConfigurationFile("prod.properties", true, false, true, 5));
+        SecurityAuditVisitor security = new SecurityAuditVisitor();
+        QualityGateVisitor quality = new QualityGateVisitor();
+        d.accept(security);
+        d.accept(quality);
+        assertEquals(2L, security.getCriticalIssueCount());
+        assertEquals(2, quality.getCriticalSecurityIssues());
+        assertFalse(quality.getChecks().get("Security"));
     }
 
     @Test
-    void statisticsAggregatesNestedProject() {
-        ProjectStatisticsVisitor visitor = new ProjectStatisticsVisitor();
-        DemoApplication.createFintechProject().accept(visitor);
-        assertEquals(5, visitor.getTotalFiles());
-        assertEquals(2, visitor.getSourceFiles());
-        assertEquals(1, visitor.getTestFiles());
-        assertEquals(12, visitor.getTotalTests());
-        assertEquals(2, visitor.getDependencies());
-        assertEquals(405, visitor.getLinesOfCode());
+    void securityScoreIsNeverNegative() {
+        Directory d = new Directory("root");
+        for (int i = 0; i < 10; i++)
+            d.add(new SourceCodeFile("Secret" + i + ".java", 4, 2, true, false, true));
+        SecurityAuditVisitor v = new SecurityAuditVisitor();
+        d.accept(v);
+        assertEquals(0, v.getSecurityScore());
+        assertEquals(10L, v.getCriticalIssueCount());
     }
 
     @Test
-    void statisticsCalculatesAverageComplexityAndTestRatio() {
+    void statisticsAggregateNestedProject() {
+        ProjectStatisticsVisitor v = new ProjectStatisticsVisitor();
+        DemoApplication.createFintechProject().accept(v);
+        assertEquals(5, v.getTotalFiles());
+        assertEquals(2, v.getSourceFiles());
+        assertEquals(1, v.getTestFiles());
+        assertEquals(12, v.getTotalTests());
+        assertEquals(12, v.getPassedTests());
+        assertEquals(405, v.getLinesOfCode());
+        assertEquals(2, v.getDependencies());
+        assertEquals(8.5, v.getAverageComplexity(), 0.001);
+        assertEquals(0.5, v.getTestSourceRatio(), 0.001);
+        assertEquals(6.0, v.getTestCaseSourceRatio(), 0.001);
+    }
+
+    @Test
+    void testFileRatioIsDifferentFromIndividualTestCountRatio() {
         Directory root = new Directory("root")
                 .add(new SourceCodeFile("A.java", 10, 4, false, false, true))
                 .add(new SourceCodeFile("B.java", 10, 8, false, false, true))
-                .add(new TestFile("ATest.java", 5, 2, 2, "A.java"));
-        ProjectStatisticsVisitor visitor = new ProjectStatisticsVisitor();
-        root.accept(visitor);
-        assertEquals(6.0, visitor.getAverageComplexity(), 0.001);
-        assertEquals(1.0, visitor.getTestSourceRatio(), 0.001);
+                .add(new TestFile("ATest.java", 5, 7, 6, "A.java"));
+        ProjectStatisticsVisitor v = new ProjectStatisticsVisitor();
+        root.accept(v);
+        assertEquals(6.0, v.getAverageComplexity(), 0.001);
+        assertEquals(0.5, v.getTestSourceRatio(), 0.001);
+        assertEquals(3.5, v.getTestCaseSourceRatio(), 0.001);
+        assertEquals(7, v.getTotalTests());
+        assertEquals(6, v.getPassedTests());
     }
 
     @Test
-    void statisticsUsesIndividualTestCountForTestSourceRatio() {
+    void qualityGatePassesAtThresholdBoundary() {
         Directory root = new Directory("root")
-                .add(new SourceCodeFile("A.java", 20, 4, false, false, true))
-                .add(new TestFile("ATest.java", 15, 7, 7, "A.java"));
-        ProjectStatisticsVisitor visitor = new ProjectStatisticsVisitor();
-        root.accept(visitor);
-
-        assertEquals(7, visitor.getTotalTests());
-        assertEquals(7.0, visitor.getTestSourceRatio(), 0.001);
-        assertTrue(visitor.report().contains("Total tests: 7"));
+                .add(new SourceCodeFile("A.java", 30, 10, false, false, true))
+                .add(new SourceCodeFile("B.java", 30, 10, false, false, true))
+                .add(new TestFile("ATest.java", 10, 2, 2, "A.java"));
+        QualityGateVisitor v = new QualityGateVisitor(10.0, 0.50);
+        root.accept(v);
+        assertTrue(v.isReadyForRelease());
+        assertEquals(0.5, v.getTestSourceRatio(), 0.001);
     }
 
     @Test
-    void qualityGateUsesIndividualTestCountRatherThanTestFileCount() {
-        Directory root = new Directory("root")
-                .add(new SourceCodeFile("A.java", 20, 4, false, false, true))
-                .add(new TestFile("ATest.java", 15, 1, 1, "A.java"));
-        QualityGateVisitor visitor = new QualityGateVisitor(10.0, 0.40);
-        root.accept(visitor);
-
-        assertTrue(visitor.isReadyForRelease());
-        assertEquals(1.0, visitor.getTestSourceRatio(), 0.001);
-    }
-
-    @Test
-    void qualityGatePassesWhenAllThresholdsAreMet() {
-        Directory root = new Directory("root")
-                .add(new SourceCodeFile("A.java", 10, 5, false, false, true))
-                .add(new TestFile("ATest.java", 10, 4, 4, "A.java"));
-        QualityGateVisitor visitor = new QualityGateVisitor();
-        root.accept(visitor);
-        assertTrue(visitor.isReadyForRelease());
-        assertTrue(visitor.getChecks().values().stream().allMatch(Boolean::booleanValue));
-    }
-
-    @Test
-    void qualityGateFailsForComplexityAndInsufficientTests() {
+    void qualityGateFailsForHighComplexityAndFewTests() {
         Directory root = new Directory("root")
                 .add(new SourceCodeFile("A.java", 10, 22, false, false, true))
                 .add(new SourceCodeFile("B.java", 10, 20, false, false, true));
-        QualityGateVisitor visitor = new QualityGateVisitor();
-        root.accept(visitor);
-        assertFalse(visitor.isReadyForRelease());
-        assertFalse(visitor.getChecks().get("Complexity"));
-        assertFalse(visitor.getChecks().get("Tests"));
+        QualityGateVisitor v = new QualityGateVisitor();
+        root.accept(v);
+        assertFalse(v.isReadyForRelease());
+        assertFalse(v.getChecks().get("Complexity"));
+        assertFalse(v.getChecks().get("Tests"));
+    }
+
+    @Test
+    void qualityGateFailsWhenTestFileRatioIsTooLow() {
+        Directory root = new Directory("root")
+                .add(new SourceCodeFile("A.java", 10, 4, false, false, true))
+                .add(new SourceCodeFile("B.java", 10, 4, false, false, true))
+                .add(new SourceCodeFile("C.java", 10, 4, false, false, true))
+                .add(new TestFile("ATest.java", 5, 100, 100, "A.java"));
+        QualityGateVisitor v = new QualityGateVisitor();
+        root.accept(v);
+        assertEquals(1.0/3, v.getTestSourceRatio(), 0.001);
+        assertFalse(v.getChecks().get("Tests"));
     }
 
     @Test
     void qualityGateFailsForCriticalSecurityIssue() {
-        Directory root = new Directory("root").add(new SourceCodeFile("A.java", 10, 1, true, false, true));
-        QualityGateVisitor visitor = new QualityGateVisitor();
-        root.accept(visitor);
-        assertFalse(visitor.getChecks().get("Security"));
+        Directory root = new Directory("root")
+                .add(new SourceCodeFile("A.java", 10, 1, true, false, true))
+                .add(new TestFile("ATest.java", 10, 4, 4, "A.java"));
+        QualityGateVisitor v = new QualityGateVisitor();
+        root.accept(v);
+        assertFalse(v.getChecks().get("Security"));
+        assertFalse(v.isReadyForRelease());
     }
 
     @Test
@@ -154,69 +165,154 @@ class VisitorPatternTest {
                 new Dependency("floating-lib", "LATEST", false, false, "MIT"),
                 new Dependency("blocked-lib", "2.0", false, true, "Commercial")
         )));
-        ComplianceVisitor visitor = new ComplianceVisitor();
-        root.accept(visitor);
-        assertEquals(2, visitor.getViolations().size());
-        assertFalse(visitor.isCompliant());
+        ComplianceVisitor v = new ComplianceVisitor();
+        root.accept(v);
+        assertEquals(2, v.getViolations().size());
+        assertFalse(v.isCompliant());
     }
 
     @Test
-    void complianceDetectsExposedCredentialsAndMissingProductionTests() {
+    void complianceDetectsHardcodedSourceCredentials() {
+        Directory root = new Directory("root")
+                .add(new SourceCodeFile("src/Auth.java", 50, 3, true, false, false));
+        ComplianceVisitor v = new ComplianceVisitor();
+        root.accept(v);
+        assertEquals(1, v.getViolations().size());
+        assertTrue(v.report().contains("hardcoded credentials"));
+    }
+
+    @Test
+    void complianceDetectsExposedConfigAndMissingProductionTests() {
         Directory root = new Directory("root")
                 .add(new SourceCodeFile("Payment.java", 50, 4, false, false, true))
                 .add(new ConfigurationFile("app.properties", true, true, true, 3));
-        ComplianceVisitor visitor = new ComplianceVisitor();
-        root.accept(visitor);
-        assertEquals(2, visitor.getViolations().size());
-        assertTrue(visitor.getViolations().stream().anyMatch(v -> v.contains("no mapped test")));
+        ComplianceVisitor v = new ComplianceVisitor();
+        root.accept(v);
+        assertEquals(2, v.getViolations().size());
+        assertTrue(v.getViolations().stream().anyMatch(s -> s.contains("no mapped test")));
     }
 
     @Test
-    void nestedDirectoriesAreTraversedRecursively() {
-        Directory deep = new Directory("deep").add(new SourceCodeFile("Deep.java", 7, 2, false, false, false));
-        Directory root = new Directory("root").add(new Directory("middle").add(deep));
-        ProjectStatisticsVisitor visitor = new ProjectStatisticsVisitor();
-        root.accept(visitor);
-        assertEquals(1, visitor.getSourceFiles());
-        assertEquals(7, visitor.getLinesOfCode());
+    void complianceRecognizesTestSourceLinkRegardlessOfOrder() {
+        Directory root = new Directory("root")
+                .add(new TestFile("tests/PaymentTest.java", 20, 2, 1, "src/Payment.java"))
+                .add(new SourceCodeFile("src/Payment.java", 50, 4, false, false, true));
+        ComplianceVisitor v = new ComplianceVisitor();
+        root.accept(v);
+        assertTrue(v.isCompliant());
     }
 
     @Test
-    void emptyDirectoryHasZeroMetricsAndDoesNotDivideByZero() {
-        ProjectStatisticsVisitor visitor = new ProjectStatisticsVisitor();
-        new Directory("empty").accept(visitor);
-        assertEquals(0, visitor.getTotalFiles());
-        assertEquals(0.0, visitor.getAverageComplexity(), 0.0001);
-        assertEquals(0.0, visitor.getTestSourceRatio(), 0.0001);
+    void complianceRejectsEmptyTestSuiteAsCoverage() {
+        Directory root = new Directory("root")
+                .add(new SourceCodeFile("src/Payment.java", 50, 4, false, false, true))
+                .add(new TestFile("tests/PaymentTest.java", 0, 0, 0, "src/Payment.java"));
+        ComplianceVisitor v = new ComplianceVisitor();
+        root.accept(v);
+        assertFalse(v.isCompliant());
     }
 
     @Test
-    void technicalDebtVisitorProducesHigherDebtForComplexCode() {
-        Directory low = new Directory("low").add(new SourceCodeFile("Simple.java", 100, 3, false, false, false));
-        Directory high = new Directory("high").add(new SourceCodeFile("Complex.java", 100, 18, false, true, false));
-        TechnicalDebtVisitor lowVisitor = new TechnicalDebtVisitor();
-        TechnicalDebtVisitor highVisitor = new TechnicalDebtVisitor();
-        low.accept(lowVisitor);
-        high.accept(highVisitor);
-        assertTrue(highVisitor.getDebtPoints() > lowVisitor.getDebtPoints());
-        assertEquals(1, highVisitor.getHighDebtFiles());
+    void nestedDirectoriesTraverseRecursively() {
+        Directory root = new Directory("root").add(new Directory("middle")
+                .add(new Directory("deep")
+                .add(new SourceCodeFile("Deep.java", 7, 2, false, false, false))));
+        ProjectStatisticsVisitor v = new ProjectStatisticsVisitor();
+        root.accept(v);
+        assertEquals(1, v.getSourceFiles());
+        assertEquals(7, v.getLinesOfCode());
     }
 
     @Test
-    void configurationAndDependencyEdgeCasesAreHandled() {
-        assertThrows(IllegalArgumentException.class, () -> new SourceCodeFile("A.java", -1, 1, false, false, false));
-        assertThrows(IllegalArgumentException.class, () -> new TestFile("ATest.java", 10, 2, 3, "A.java"));
+    void emptyDirectoryHasZeroMetricsWithoutDivisionByZero() {
+        ProjectStatisticsVisitor v = new ProjectStatisticsVisitor();
+        new Directory("empty").accept(v);
+        assertEquals(0, v.getTotalFiles());
+        assertEquals(0.0, v.getAverageComplexity(), 0.001);
+        assertEquals(0.0, v.getTestSourceRatio(), 0.001);
+    }
+
+    @Test
+    void emptyDirectoryIsNotReleaseReady() {
+        QualityGateVisitor v = new QualityGateVisitor();
+        new Directory("empty").accept(v);
+        assertFalse(v.isReadyForRelease());
+    }
+
+    @Test
+    void qualityGateRejectsEmptyTestFileEvenIfFileRatioPasses() {
+        Directory root = new Directory("root")
+                .add(new SourceCodeFile("A.java", 10, 3, false, false, true))
+                .add(new TestFile("ATest.java", 0, 0, 0, "A.java"));
+        QualityGateVisitor v = new QualityGateVisitor();
+        root.accept(v);
+        assertEquals(1.0, v.getTestSourceRatio(), 0.001);
+        assertFalse(v.getChecks().get("Tests"));
+    }
+
+    @Test
+    void technicalDebtIncreasesForComplexSource() {
+        TechnicalDebtVisitor low = new TechnicalDebtVisitor();
+        TechnicalDebtVisitor high = new TechnicalDebtVisitor();
+        new SourceCodeFile("Simple.java", 100, 3, false, false, false).accept(low);
+        new SourceCodeFile("Complex.java", 100, 18, false, true, false).accept(high);
+        assertTrue(high.getDebtPoints() > low.getDebtPoints());
+        assertEquals(1, high.getHighDebtFiles());
+    }
+
+    @Test
+    void technicalDebtCountsFailedTestsAndVulnerableLibrary() {
+        Directory root = new Directory("root")
+                .add(new TestFile("T.java", 20, 5, 3, "A.java"))
+                .add(new DependencyFile("pom.xml", List.of(new Dependency("old", "1.0", true, false, "MIT"))));
+        TechnicalDebtVisitor v = new TechnicalDebtVisitor();
+        root.accept(v);
+        assertEquals(34, v.getDebtPoints());
+        assertEquals(2, v.getInspectedFiles());
+    }
+
+    @Test
+    void invalidElementMetricsAreRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new SourceCodeFile("A.java", -1, 1, false, false, false));
+        assertThrows(IllegalArgumentException.class,
+                () -> new TestFile("ATest.java", 10, 2, 3, "A.java"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ConfigurationFile("config", false, true, false, -1));
+    }
+
+    @Test
+    void dynamicDependencyVersionsAreRejected() {
         assertFalse(new Dependency("lib", "", false, false, "MIT").hasSpecifiedVersion());
+        assertFalse(new Dependency("lib", "LATEST", false, false, "MIT").hasSpecifiedVersion());
+        assertFalse(new Dependency("lib", "  latest  ", false, false, "MIT").hasSpecifiedVersion());
+        assertFalse(new Dependency("lib", "1.+", false, false, "MIT").hasSpecifiedVersion());
+        assertFalse(new Dependency("lib", "[1.0,2.0)", false, false, "MIT").hasSpecifiedVersion());
+        assertTrue(new Dependency("lib", "2.4.0", false, false, "MIT").hasSpecifiedVersion());
     }
 
     @Test
-    void demoProjectMeetsQualityGateButReportsMissingTestCoverage() {
+    void selfContainingDirectoryIsRejected() {
+        Directory root = new Directory("root");
+        assertThrows(IllegalArgumentException.class, () -> root.add(root));
+    }
+
+    @Test
+    void qualityGateRejectsNanThresholds() {
+        assertThrows(IllegalArgumentException.class, () -> new QualityGateVisitor(Double.NaN, 0.4));
+        assertThrows(IllegalArgumentException.class, () -> new QualityGateVisitor(10.0, Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    void demoProjectPassesQualityButReportsMissingTestCoverage() {
         Directory root = DemoApplication.createFintechProject();
         QualityGateVisitor quality = new QualityGateVisitor();
-        root.accept(quality);
         ComplianceVisitor compliance = new ComplianceVisitor();
+        root.accept(quality);
         root.accept(compliance);
         assertTrue(quality.isReadyForRelease());
         assertFalse(compliance.isCompliant());
+        assertEquals(1, compliance.getViolations().size());
+        assertTrue(compliance.report().contains("UserService.java"));
     }
 }
